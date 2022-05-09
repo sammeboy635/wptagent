@@ -38,3 +38,7 @@ def test_imports():
     except BaseException:
         warnings.warn(UserWarning("Ujson couldn't import, defaulting to json lib"))
         import json
+
+def test_wptutil():
+    import internal.wptutil as wptutil
+    wptutil.test_logsingleton()
