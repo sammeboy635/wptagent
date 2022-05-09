@@ -27,7 +27,7 @@ else:
     from urlparse import urlsplit # pylint: disable=import-error
     GZIP_READ_TEXT = 'r'
     GZIP_TEXT = 'w'
-    string_types = basestring
+    string_types = basestring # pylint: disable=undefined-variable
 try:
     import ujson as json
 except BaseException:
