@@ -6,11 +6,11 @@
 
 name: Python application
 
-on:
-  push:
-    branches: [ master, wptaction ]
-  pull_request:
-    branches: [ master, wptaction ]
+on: [push,pull_request]
+  # push:
+  #   branches: [ master]
+  # pull_request:
+  #   branches: [ master]
 
 permissions:
   contents: read
