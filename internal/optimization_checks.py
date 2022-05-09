@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import time
+from internal.wptutil import LogSingleton as logs
 if (sys.version_info >= (3, 0)):
     from time import monotonic
     GZIP_TEXT = 'wt'
@@ -33,6 +34,7 @@ except BaseException:
 class OptimizationChecks(object):
     """Threaded optimization checks"""
     def __init__(self, job, task, requests):
+        logs.write("Init OptimizationChecks")
         self.job = job
         self.task = task
         self.running_checks = False
@@ -409,6 +411,7 @@ class OptimizationChecks(object):
     def start(self):
         """Start running the optimization checks"""
         logging.debug('Starting optimization checks...')
+        logs.write("Starting OptimizationChecks")
         optimization_checks_disabled = bool('noopt' in self.job and self.job['noopt'])
         if self.requests is not None and not optimization_checks_disabled:
             self.running_checks = True
@@ -436,6 +439,7 @@ class OptimizationChecks(object):
 
     def join(self):
         """Wait for the optimization checks to complete and record the results"""
+        logs.write("Joining Optimization")
         logging.debug('Waiting for optimization checks to complete')
         if self.running_checks:
             logging.debug('Waiting for progressive JPEG check to complete')
@@ -883,6 +887,7 @@ class OptimizationChecks(object):
     def check_gzip(self):
         """Check each request to see if it can be compressed"""
         self.profile_start('gzip')
+        logs.write("Checking Request to be Gzip")
         start = monotonic()
         for request_id in self.requests:
             try:

@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+from internal.wptutil import LogSingleton as logs
 HAS_FUTURE = False
 try:
     from builtins import str
@@ -64,6 +65,7 @@ class DevToolsParser(object):
 
     def process(self):
         """Main entry point for processing"""
+        logs.write("***Main Entry point for Processing***")
         logging.debug("Processing raw devtools events")
         raw_requests, raw_page_data = self.extract_net_requests()
         if len(raw_requests) or len(raw_page_data):
@@ -94,6 +96,7 @@ class DevToolsParser(object):
             logging.debug("Writing result")
             self.make_utf8(self.result)
             self.write()
+            logs.write("***END OF Main Entry point for Processing***")
 
     def make_utf8(self, data):
         """Convert the given array to utf8"""
@@ -412,6 +415,7 @@ class DevToolsParser(object):
 
     def process_requests(self, raw_requests, raw_page_data):
         """Process the raw requests into high-level requests"""
+        logs.write("\tProcess_requests")
         self.result = {'pageData': {}, 'requests': []}
         if 'startTime' not in raw_page_data:
             raw_page_data['startTime'] = 0
@@ -849,6 +853,7 @@ class DevToolsParser(object):
 
     def process_netlog_requests(self):
         """Merge the data from the netlog requests file"""
+        logs.write("\tProcessing_Netlogs_requests")
         page_data = self.result['pageData']
         requests = self.result['requests']
         mapping = {'created': 'created',
@@ -1116,6 +1121,7 @@ class DevToolsParser(object):
 
     def process_timeline_requests(self):
         """Process the timeline request data for render-blocking indicators"""
+        logs.write("\tProcess_timeline_requests")
         if self.timeline_requests_file is not None and os.path.isfile(self.timeline_requests_file):
             _, ext = os.path.splitext(self.timeline_requests_file)
             if ext.lower() == '.gz':
@@ -1147,6 +1153,7 @@ class DevToolsParser(object):
 
     def process_page_data(self):
         """Walk through the sorted requests and generate the page-level stats"""
+        logs.write("\tProcess_page_data")
         page_data = self.result['pageData']
         requests = self.result['requests']
         page_data['bytesOut'] = 0
@@ -1223,6 +1230,7 @@ class DevToolsParser(object):
 
     def process_user_timing(self):
         """Walk through the sorted requests and generate the page-level stats"""
+        logs.write("\tProcessing_user_timing")
         page_data = self.result['pageData']
         if self.user_timing_file is not None and os.path.isfile(self.user_timing_file):
             _, ext = os.path.splitext(self.user_timing_file)
@@ -1284,6 +1292,7 @@ class DevToolsParser(object):
 
     def process_optimization_results(self):
         """Merge the data from the optimization checks file"""
+        logs.write("\tProces_optimization_results")
         page_data = self.result['pageData']
         requests = self.result['requests']
         if self.optimization is not None and os.path.isfile(self.optimization):
@@ -1399,6 +1408,7 @@ class DevToolsParser(object):
 
     def process_code_coverage(self):
         """Merge the data from the code coverage file"""
+        logs.write("\tProcess_code_coverage")
         try:
             page_data = self.result['pageData']
             requests = self.result['requests']
@@ -1445,6 +1455,7 @@ class DevToolsParser(object):
 
     def process_cpu_times(self):
         """Calculate the main thread CPU times from the time slices file"""
+        logs.write("\tProcesses_cpu_times")
         try:
             import math
             page_data = self.result['pageData']

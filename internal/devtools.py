@@ -19,6 +19,7 @@ import threading
 import time
 import uuid
 import zipfile
+from internal.wptutil import LogSingleton as logs
 if (sys.version_info >= (3, 0)):
     from time import monotonic
     from urllib.parse import urlsplit # pylint: disable=import-error
@@ -145,6 +146,7 @@ class DevTools(object):
     def wait_for_available(self, timeout):
         """Wait for the dev tools interface to become available (but don't connect)"""
         import requests
+        logs.write("Devtools Starting")
         self.profile_start('devtools_start')
         proxies = {"http": None, "https": None}
         ret = False
@@ -598,6 +600,7 @@ class DevTools(object):
 
     def start_collecting_trace(self):
         """Kick off the trace processing asynchronously"""
+        logs.write("Collecting Trace")
         if self.trace_enabled and not self.must_exit:
             keep_timeline = True
             if 'discard_timeline' in self.job and self.job['discard_timeline']:
@@ -611,6 +614,7 @@ class DevTools(object):
 
     def snapshot_dom(self):
         """Grab a snapshot of the DOM to use for processing element locations"""
+        logs.write("Snapshoting DOM")
         if self.dom_tree is not None:
             return self.dom_tree
         if self.must_exit:
@@ -629,6 +633,7 @@ class DevTools(object):
 
     def collect_trace(self):
         """Stop tracing and collect the results"""
+        logs.write("Collecting Trace")
         if self.must_exit:
             return
         if self.trace_enabled:
@@ -764,6 +769,7 @@ class DevTools(object):
 
     def get_response_bodies(self):
         """Retrieve all of the response bodies for the requests that we know about"""
+        logs.write("Getting Response Bodies")
         if self.must_exit:
             return
         self.profile_start('get_response_bodies')
@@ -949,6 +955,7 @@ class DevTools(object):
 
     def wait_for_page_load(self):
         """Wait for the page load and activity to finish"""
+        logs.write("***Waiting for page to load***")
         self.profile_start('wait_for_page_load')
         if self.websocket:
             start_time = monotonic()
@@ -1014,11 +1021,13 @@ class DevTools(object):
                         done = True
                     elif self.task['error'] is not None:
                         done = True
+        logs.write("***End of Wait for Page to Load***")
         self.profile_end('wait_for_page_load')
     
     def grab_screenshot(self, path, png=True, resize=0):
         """Save the screen shot (png or jpeg)"""
         logging.debug('Grabbing Screenshot')
+        logs.write("Grabbing ScreenShots")
         if not self.main_thread_blocked and not self.must_exit:
             self.profile_start('screenshot')
             response = None

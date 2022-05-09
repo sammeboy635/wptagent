@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 import time
+from internal.wptutil import LogSingleton as logs
 if (sys.version_info >= (3, 0)):
     from time import monotonic
     from urllib.parse import urlsplit # pylint: disable=import-error
@@ -36,6 +37,7 @@ class DevtoolsBrowser(object):
     CONNECT_TIME_LIMIT = 120
 
     def __init__(self, options, job, use_devtools_video=True, is_webkit=False, is_ios=False):
+        logs.write("Init DevtoolsBrowser")
         self.options = options
         self.job = job
         self.is_webkit = is_webkit
@@ -61,6 +63,7 @@ class DevtoolsBrowser(object):
 
     def connect(self, task):
         """Connect to the dev tools interface"""
+        logs.write("Connecting to dev tools interface")
         ret = False
         from internal.devtools import DevTools
         self.devtools = DevTools(self.options, self.job, task, self.use_devtools_video, self.is_webkit, self.is_ios)
@@ -78,6 +81,7 @@ class DevtoolsBrowser(object):
 
     def disconnect(self):
         """Disconnect from dev tools"""
+        logs.write("Disconnecting from dev tools")
         if self.devtools is not None:
             # Always navigate to about:blank after finishing in case the tab is
             # remembered across sessions
@@ -241,6 +245,7 @@ class DevtoolsBrowser(object):
 
     def on_stop_recording(self, task):
         """Stop recording"""
+        logs.write("Stoping Recording")
         if self.devtools is not None and not self.must_exit_now:
             self.devtools.collect_trace()
             if self.devtools_screenshot:
@@ -297,6 +302,7 @@ class DevtoolsBrowser(object):
             optimization.start()
             # Run the video post-processing
             if self.use_devtools_video and self.job['video']:
+                logs.write("***Processing Video***")
                 self.process_video()
             if self.job.get('wappalyzer'):
                 self.wappalyzer_detect(task, self.devtools.main_request_headers)
@@ -347,6 +353,7 @@ class DevtoolsBrowser(object):
         if self.must_exit_now:
             return
         from internal.video_processing import VideoProcessing
+        logs.write("Post Processing The Video")
         self.profile_start('dtbrowser.process_video')
         video = VideoProcessing(self.options, self.job, self.task)
         video.process()
@@ -356,6 +363,7 @@ class DevtoolsBrowser(object):
         """Process the devtools log and pull out the requests information"""
         if self.must_exit_now:
             return
+        logs.write("***Processing Devtools Requests***")
         self.profile_start('dtbrowser.process_devtools_requests')
         path_base = os.path.join(self.task['dir'], self.task['prefix'])
         devtools_file = path_base + '_devtools.json.gz'
@@ -408,6 +416,7 @@ class DevtoolsBrowser(object):
             if 'page_data' in parser.result and 'result' in parser.result['page_data']:
                 self.task['page_result'] = parser.result['page_data']['result']
         self.profile_end('dtbrowser.process_devtools_requests')
+        logs.write("***End of Processing Devtools Requests***")
 
     def run_js_file(self, file_name):
         """Execute one of our js scripts"""
@@ -963,6 +972,7 @@ class DevtoolsBrowser(object):
     def run_axe(self, task):
         """Build the axe script to run in-browser"""
         self.profile_start('dtbrowser.axe_run')
+        logs.write("***Running Axe***")
         start = monotonic()
         script = None
         try:
@@ -1017,6 +1027,8 @@ class DevtoolsBrowser(object):
         """Run the wappalyzer detection"""
         if self.must_exit_now:
             return
+            
+        logs.write("***Running Wappalyzer***")
         self.profile_start('dtbrowser.wappalyzer_detect')
         # Run the Wappalyzer detection (give it 30 seconds at most)
         completed = False

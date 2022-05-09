@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import traceback
+from internal.wptutil import LogSingleton as logs
 if (sys.version_info >= (3, 0)):
     GZIP_TEXT = 'wt'
 else:
@@ -29,6 +30,7 @@ except BaseException:
 class WPTAgent(object):
     """Main agent workflow"""
     def __init__(self, options, browsers):
+        logs.write("Initializing WPTAgent")
         from internal.browsers import Browsers
         from internal.webpagetest import WebPageTest
         from internal.traffic_shaping import TrafficShaper
@@ -84,6 +86,7 @@ class WPTAgent(object):
 
     def run_testing(self):
         """Main testing flow"""
+        logs.write("***Main Testing Flow***")
         if (sys.version_info >= (3, 0)):
             from time import monotonic
         else:
@@ -125,6 +128,7 @@ class WPTAgent(object):
                 logging.exception('Error starting pubsub subscription')
 
         while not self.must_exit and not done:
+            logs.write("***Entering Main Server Loop***")
             try:
                 self.alive()
                 if os.path.isfile(exit_file):
@@ -281,6 +285,7 @@ class WPTAgent(object):
 
     def run_single_test(self):
         """Run a single test run"""
+        logs.write("***Running Single Test***")
         if self.health_check_server is not None:
             self.health_check_server.healthy()
         self.alive()
@@ -321,6 +326,7 @@ class WPTAgent(object):
             logging.critical(err)
             self.task['error'] = err
         self.browser = None
+        logs.write("***End of Single Test***")
 
     def signal_handler(self, signum, frame):
         """Ctrl+C handler"""
