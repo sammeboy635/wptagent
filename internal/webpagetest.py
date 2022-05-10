@@ -219,7 +219,7 @@ class WebPageTest(object):
             pass
         # Load the discovered browser margins
         self.margins = {}
-        margins_file = os.path.join(self.persistent_dir, 'margins.json')
+        margins_file = os.path.join(self.workdir, 'margins.json')
         if os.path.isfile(margins_file):
             with open(margins_file, 'r') as f_in:
                 self.margins = json.load(f_in)
@@ -246,7 +246,7 @@ class WebPageTest(object):
     def benchmark_cpu(self):
         """Benchmark the CPU for mobile emulation"""
         self.cpu_scale_multiplier = 1.0
-        if not self.options.android and not self.options.iOS:
+        if not self.options.android and not self.options.iOS and not self.options.server:
             import hashlib
             logging.debug('Starting CPU benchmark')
             hash_val = hashlib.sha256()
@@ -400,8 +400,8 @@ class WebPageTest(object):
                 pass
             if needs_block:
                 subprocess.call(['sudo', 'route', 'add', '169.254.169.254', 'gw', '127.0.0.1', 'lo'])
-            logs.write("End of Metadata Server")
                 self.metadata_blocked = True
+            logs.write("End of Metadata Server")
 
     def parse_user_data(self, user_data):
         """Parse the provided user data and extract the config info"""
@@ -611,7 +611,6 @@ class WebPageTest(object):
                     with open(job_path, 'wt') as f_out:
                         json.dump(job, f_out)
                     self.needs_zip.append({'path': job_path, 'name': 'job.json'})
-                    job['testinfo']['started'] = job['started']
                 # Add the non-serializable members
                 if self.health_check_server is not None:
                     job['health_check_server'] = self.health_check_server
@@ -1222,9 +1221,9 @@ class WebPageTest(object):
             if browser not in self.margins or self.margins[browser]['width'] != width or \
                     self.margins[browser]['height'] != height:
                 self.margins[browser] = {"width": width, "height": height}
-                if not os.path.isdir(self.persistent_dir):
-                    os.makedirs(self.persistent_dir)
-                margins_file = os.path.join(self.persistent_dir, 'margins.json')
+                # if not os.path.isdir(self.persistent_dir):
+                #     os.makedirs(self.persistent_dir)
+                margins_file = os.path.join(self.workdir, 'margins.json')
                 with open(margins_file, 'w') as f_out:
                     json.dump(self.margins, f_out)
 
@@ -1693,7 +1692,7 @@ class WebPageTest(object):
 
     def post_data(self, url, data, file_path=None, filename=None):
         """Send a multi-part post"""
-        if self.is_dead:
+        if self.is_dead or self.options.server == None:
             return False
         ret = True
         # pass the data fields as query params and any files as post data

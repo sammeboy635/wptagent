@@ -1175,6 +1175,13 @@ def main():
 
     if options.debug: # Added for Github Actions
         logs(log = True, profile = False)
+        if platform.system() == 'Linux':
+            options.dockerized = False
+            options.xvfb = True
+            options.noidle = True
+            options.location = 'Test'
+            options.testout = 'id'
+            options.browser = 'Chrome'
         if options.testurl == None or "google" in options.testurl:
             options.testurl = r"https://www.google.com/"
         elif "light" in options.testurl:

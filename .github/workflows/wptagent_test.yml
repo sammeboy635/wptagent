@@ -54,7 +54,7 @@ jobs:
         
     # - name: Run a local test # We could add Local Tests here
     #   run: |
-    #     sudo python3 wptagent.py -vvvv --location Test --xvfb --noidle --testurl 'https://www.google.com/' --testspec testspec.json --testout url --dockerized
+    #     python3 wptagent.py --xvfb --location test --browser "Chrome" -vvvv --testurl light --debug
     # - name: Print Profil # Call a python function to print the profile data or log data after run
     #   run: |
     #     python3 test_wptagent.py

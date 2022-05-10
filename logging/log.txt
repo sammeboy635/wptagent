@@ -1,0 +1,48 @@
+05/09/2022 17:13:54.827 | 13    | 8     | Initializing WPTAgent                                             | wptagent.py|__init__|33>
+05/09/2022 17:13:54.986 | 172   | 148   | Init WebPageTest                                                  | /internal/webpagetest.py|__init__|60>
+05/09/2022 17:13:55.020 | 206   | 49    | Checking Metadata Server                                          | /internal/webpagetest.py|block_metadata|386>
+05/09/2022 17:13:55.030 | 216   | 10    | End of Metadata Server                                            | /internal/webpagetest.py|block_metadata|404>
+05/09/2022 17:13:55.436 | 622   | 405   | ***Main Testing Flow***                                           | wptagent.py|run_testing|89>
+05/09/2022 17:13:55.501 | 687   | 65    | ***Entering Main Server Loop***                                   | wptagent.py|run_testing|131>
+05/09/2022 17:13:55.502 | 688   | 0     | Processing_Job_Json                                               | /internal/webpagetest.py|process_job_json|512>
+05/09/2022 17:13:57.812 | 2998  | 2309  | ***Running Single Test***                                         | wptagent.py|run_single_test|288>
+05/09/2022 17:13:57.850 | 3037  | 4     | Init ChromeDesktop                                                | /internal/chrome_desktop.py|__init__|76>
+05/09/2022 17:13:57.852 | 3038  | 34    | Init DesktopBrowser                                               | /internal/desktop_browser.py|__init__|52>
+05/09/2022 17:13:57.852 | 3038  | 1     | Init BrowserBase                                                  | /internal/base_browser.py|__init__|18>
+05/09/2022 17:13:57.854 | 3040  | 0     | Init DevtoolsBrowser                                              | /internal/devtools_browser.py|__init__|40>
+05/09/2022 17:13:57.854 | 3040  | 1     | Preparing the Browser                                             | /internal/desktop_browser.py|prepare|95>
+05/09/2022 17:13:58.051 | 3237  | 196   | Modifying host files                                              | /internal/desktop_browser.py|modify_hosts|138>
+05/09/2022 17:13:58.440 | 3627  | 389   | Connecting to dev tools interface                                 | /internal/devtools_browser.py|connect|66>
+05/09/2022 17:13:59.858 | 5044  | 1417  | Starting Video Recording                                          | /internal/desktop_browser.py|on_start_recording|439>
+05/09/2022 17:14:00.711 | 5897  | 846   | ***Waiting for page to load***                                    | /internal/devtools.py|wait_for_page_load|958>
+05/09/2022 17:14:07.681 | 12867 | 6975  | ***End of Wait for Page to Load***                                | /internal/devtools.py|wait_for_page_load|1024>
+05/09/2022 17:14:07.682 | 12868 | 1     | On Stop Capture                                                   | /internal/desktop_browser.py|on_stop_capture|609>
+05/09/2022 17:14:07.685 | 12871 | 2     | Collecting Trace                                                  | /internal/devtools.py|start_collecting_trace|603>
+05/09/2022 17:14:07.686 | 12872 | 1     | Snapshoting DOM                                                   | /internal/devtools.py|snapshot_dom|617>
+05/09/2022 17:14:08.629 | 13815 | 942   | Stoping Recording                                                 | /internal/devtools_browser.py|on_stop_recording|248>
+05/09/2022 17:14:08.630 | 13816 | 1     | Collecting Trace                                                  | /internal/devtools.py|collect_trace|636>
+05/09/2022 17:14:10.543 | 15729 | 1912  | Grabbing ScreenShots                                              | /internal/devtools.py|grab_screenshot|1030>
+05/09/2022 17:14:10.773 | 15960 | 229   | Getting Response Bodies                                           | /internal/devtools.py|get_response_bodies|772>
+05/09/2022 17:14:10.810 | 15996 | 36    | Init OptimizationChecks                                           | /internal/optimization_checks.py|__init__|37>
+05/09/2022 17:14:10.816 | 16003 | 7     | Starting OptimizationChecks                                       | /internal/optimization_checks.py|start|414>
+05/09/2022 17:14:10.854 | 16040 | 18    | Checking Request to be Gzip                                       | /internal/optimization_checks.py|check_gzip|890>
+05/09/2022 17:14:10.918 | 16104 | 81    | ***Running Wappalyzer***                                          | /internal/devtools_browser.py|wappalyzer_detect|1030>
+05/09/2022 17:14:12.926 | 18112 | 2009  | ***Running Axe***                                                 | /internal/devtools_browser.py|run_axe|975>
+05/09/2022 17:14:14.146 | 19332 | 1220  | Joining Optimization                                              | /internal/optimization_checks.py|join|442>
+05/09/2022 17:14:15.030 | 20217 | 885   | ***Processing Devtools Requests***                                | /internal/devtools_browser.py|process_devtools_requests|366>
+05/09/2022 17:14:15.298 | 20485 | 244   | ***Main Entry point for Processing***                             | /internal/support/devtools_parser.py|process|70>
+05/09/2022 17:14:15.319 | 20505 | 43    | 	Process_requests                                                 | /internal/support/devtools_parser.py|process_requests|420>
+05/09/2022 17:14:15.332 | 20518 | 12    | 	Processing_Netlogs_requests                                      | /internal/support/devtools_parser.py|process_netlog_requests|858>
+05/09/2022 17:14:15.356 | 20543 | 24    | 	Process_timeline_requests                                        | /internal/support/devtools_parser.py|process_timeline_requests|1126>
+05/09/2022 17:14:15.360 | 20546 | 3     | 	Processing_user_timing                                           | /internal/support/devtools_parser.py|process_user_timing|1235>
+05/09/2022 17:14:15.363 | 20549 | 3     | 	Process_page_data                                                | /internal/support/devtools_parser.py|process_page_data|1158>
+05/09/2022 17:14:15.369 | 20555 | 6     | 	Proces_optimization_results                                      | /internal/support/devtools_parser.py|process_optimization_results|1297>
+05/09/2022 17:14:15.373 | 20559 | 3     | 	Process_code_coverage                                            | /internal/support/devtools_parser.py|process_code_coverage|1413>
+05/09/2022 17:14:15.374 | 20560 | 1     | 	Processes_cpu_times                                              | /internal/support/devtools_parser.py|process_cpu_times_new|1510>
+05/09/2022 17:14:15.429 | 20615 | 55    | 	Process_v8_stats                                                 | /internal/support/devtools_parser.py|process_v8_stats|1557>
+05/09/2022 17:14:15.452 | 20638 | 22    | ***END OF Main Entry point for Processing***                      | /internal/support/devtools_parser.py|process|101>
+05/09/2022 17:14:15.452 | 20639 | 1     | ***End of Processing Devtools Requests***                         | /internal/devtools_browser.py|process_devtools_requests|419>
+05/09/2022 17:14:15.497 | 20684 | 44    | Disconnecting from dev tools                                      | /internal/devtools_browser.py|disconnect|84>
+05/09/2022 17:14:15.552 | 20738 | 47    | Closing the Browser                                               | /internal/desktop_browser.py|close_browser|318>
+05/09/2022 17:14:16.091 | 21277 | 546   | ***End of Single Test***                                          | wptagent.py|run_single_test|329>
+05/09/2022 17:14:16.092 | 21278 | 1     | Checking for missing bodies                                       | /internal/webpagetest.py|get_bodies|1276>

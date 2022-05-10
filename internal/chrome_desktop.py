@@ -76,7 +76,7 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
         logs.write("Init ChromeDesktop")
         self.options = options
         DesktopBrowser.__init__(self, path, options, job)
-        use_devtools_video = True if self.job['capture_display'] is None else False
+        use_devtools_video = True if self.job['capture_display'] is None else False #TODO ASK about this
         DevtoolsBrowser.__init__(self, options, job, use_devtools_video=use_devtools_video)
         self.start_page = 'http://127.0.0.1:8888/orange.html'
         self.connected = False
