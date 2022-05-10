@@ -771,7 +771,7 @@ class DesktopBrowser(BaseBrowser):
             self.video_processing.communicate()
             self.video_processing = None
             logging.debug('Video processing complete')
-            if not self.job['keepvideo']:
+            if not self.job['keepvideo'] and not self.options.debug:
                 try:
                     os.remove(task['video_file'])
                 except Exception:

@@ -319,7 +319,7 @@ class WPTAgent(object):
                 traceback.print_exc(file=sys.stdout)
             self.browser.stop(self.job, self.task)
             # Delete the browser profile if needed
-            if self.task['cached'] or self.job['fvonly']:
+            if self.task['cached'] or self.job['fvonly'] and not self.options.debug:
                 self.browser.clear_profile(self.task)
         else:
             err = "Invalid browser - {0}".format(self.job['browser'])

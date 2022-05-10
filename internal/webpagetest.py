@@ -1446,7 +1446,7 @@ class WebPageTest(object):
 
             # Zip the files
             zip_path = None
-            if len(self.needs_zip):
+            if len(self.needs_zip) and not self.options.debug:
                 zip_path = os.path.join(self.workdir, "result.zip")
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED) as zip_file:
                     for zipitem in self.needs_zip:
@@ -1512,7 +1512,7 @@ class WebPageTest(object):
         self.raw_job = None
         self.needs_zip = []
         # Clean up the work directory
-        if os.path.isdir(self.workdir):
+        if os.path.isdir(self.workdir) and not self.options.debug:
             try:
                 shutil.rmtree(self.workdir)
             except Exception:
@@ -1636,7 +1636,7 @@ class WebPageTest(object):
                     if os.path.isfile(filepath):
                         # Delete any video files that may have squeaked by
                         if not self.job['keepvideo'] and filename[-4:] == '.mp4' and \
-                                filename.find('rendered_video') == -1:
+                                filename.find('rendered_video') == -1 and not self.options.debug:
                             try:
                                 os.remove(filepath)
                             except Exception:
@@ -1644,7 +1644,7 @@ class WebPageTest(object):
                         else:
                             self.needs_zip.append({'path': filepath, 'name': filename})
                 # Zip the files
-                if len(self.needs_zip) and 'run' in self.job:
+                if (len(self.needs_zip) and 'run' in self.job) and not self.options.debug:
                     zip_path = os.path.join(task['dir'], "result.zip")
                     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_STORED) as zip_file:
                         for zipitem in self.needs_zip:
@@ -1673,7 +1673,7 @@ class WebPageTest(object):
                 if task['error'] is not None:
                     self.job['error'] = task['error']
         # Clean up so we don't leave directories lying around
-        if os.path.isdir(task['dir']) and 'run' in self.job:
+        if (os.path.isdir(task['dir']) and 'run' in self.job) and not self.options.debug:
             try:
                 shutil.rmtree(task['dir'])
             except Exception:
