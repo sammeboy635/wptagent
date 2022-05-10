@@ -367,6 +367,8 @@ class WPTAgent(object):
 
     def wait_for_idle(self, timeout=30):
         """Wait for the system to go idle for at least 2 seconds"""
+        if self.options.debug:
+            return
         if (sys.version_info >= (3, 0)):
             from time import monotonic
         else:
