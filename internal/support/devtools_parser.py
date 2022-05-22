@@ -50,6 +50,7 @@ class DevToolsParser(object):
         self.v8_stats = options['v8stats'] if 'v8stats' in options else None
         self.cached = options['cached'] if 'cached' in options else False
         self.noheaders = options['noheaders'] if 'noheaders' in options else False
+        self.new_func = options['new_func'] if 'new_func' in options else False
         self.out_file = options['out']
         self.result = {'pageData': {}, 'requests': []}
         self.request_ids = {}
@@ -67,8 +68,8 @@ class DevToolsParser(object):
 
     def process(self):
         """Main entry point for processing"""
-        logs.write("***Main Entry point for Processing***")
-        logging.debug("Processing raw devtools events")
+        #logs.write("***Main Entry point for Processing***")
+        logging.debug("***Processing devtools**")
         raw_requests, raw_page_data = self.extract_net_requests()
         if len(raw_requests) or len(raw_page_data):
             logging.debug("Extracting requests and page data")
@@ -96,9 +97,10 @@ class DevToolsParser(object):
                         if 'headers' in request:
                             del request['headers']
             logging.debug("Writing result")
-            self.make_utf8(self.result)
+            if self.new_func != True:
+                self.make_utf8(self.result)
             self.write()
-            logs.write("***END OF Main Entry point for Processing***")
+            logs.write("***END OF Processing Devtools***")
 
     def make_utf8(self, data):
         """Convert the given array to utf8"""
@@ -146,6 +148,7 @@ class DevToolsParser(object):
 
     def extract_net_requests(self):
         """Load the events we are interested in"""
+        logs.write("    Extract_Net_Requests")
         has_request_headers = False
         net_requests = []
         page_data = {'endTime': 0}
@@ -417,7 +420,7 @@ class DevToolsParser(object):
 
     def process_requests(self, raw_requests, raw_page_data):
         """Process the raw requests into high-level requests"""
-        logs.write("\tProcess_requests")
+        logs.write("    Process_requests")
         self.result = {'pageData': {}, 'requests': []}
         if 'startTime' not in raw_page_data:
             raw_page_data['startTime'] = 0
@@ -855,7 +858,7 @@ class DevToolsParser(object):
 
     def process_netlog_requests(self):
         """Merge the data from the netlog requests file"""
-        logs.write("\tProcessing_Netlogs_requests")
+        logs.write("    Processing_Netlogs_requests")
         page_data = self.result['pageData']
         requests = self.result['requests']
         mapping = {'created': 'created',
@@ -1123,7 +1126,7 @@ class DevToolsParser(object):
 
     def process_timeline_requests(self):
         """Process the timeline request data for render-blocking indicators"""
-        logs.write("\tProcess_timeline_requests")
+        logs.write("    Process_timeline_requests")
         if self.timeline_requests_file is not None and os.path.isfile(self.timeline_requests_file):
             _, ext = os.path.splitext(self.timeline_requests_file)
             if ext.lower() == '.gz':
@@ -1155,7 +1158,7 @@ class DevToolsParser(object):
 
     def process_page_data(self):
         """Walk through the sorted requests and generate the page-level stats"""
-        logs.write("\tProcess_page_data")
+        logs.write("    Process_page_data")
         page_data = self.result['pageData']
         requests = self.result['requests']
         page_data['bytesOut'] = 0
@@ -1232,7 +1235,7 @@ class DevToolsParser(object):
 
     def process_user_timing(self):
         """Walk through the sorted requests and generate the page-level stats"""
-        logs.write("\tProcessing_user_timing")
+        logs.write("    Processing_user_timing")
         page_data = self.result['pageData']
         if self.user_timing_file is not None and os.path.isfile(self.user_timing_file):
             _, ext = os.path.splitext(self.user_timing_file)
@@ -1294,7 +1297,7 @@ class DevToolsParser(object):
 
     def process_optimization_results(self):
         """Merge the data from the optimization checks file"""
-        logs.write("\tProces_optimization_results")
+        logs.write("    Proces_optimization_results")
         page_data = self.result['pageData']
         requests = self.result['requests']
         if self.optimization is not None and os.path.isfile(self.optimization):
@@ -1410,7 +1413,7 @@ class DevToolsParser(object):
 
     def process_code_coverage(self):
         """Merge the data from the code coverage file"""
-        logs.write("\tProcess_code_coverage")
+        logs.write("    Process_code_coverage")
         try:
             page_data = self.result['pageData']
             requests = self.result['requests']
@@ -1457,7 +1460,7 @@ class DevToolsParser(object):
 
     def process_cpu_times(self):
         """Calculate the main thread CPU times from the time slices file"""
-        logs.write("\tProcesses_cpu_times")
+        logs.write("    Processes_cpu_times")
         try:
             import math
             page_data = self.result['pageData']
@@ -1507,7 +1510,10 @@ class DevToolsParser(object):
             logging.exception('Error processing CPU times')
     def process_cpu_times_new(self):
         """NEW Calculate the main thread CPU times from the time slices file"""
-        logs.write("\tProcesses_cpu_times_new")
+        if self.new_func != True:
+            self.process_cpu_times()
+            return
+        logs.write("    Processes_cpu_times_new")
         try:
             page_data = self.result['pageData']
             end, doc = page_data.get(
@@ -1535,7 +1541,7 @@ class DevToolsParser(object):
             for name in all_slices:  # TODO Map Here would be great
                 slices = all_slices[name]
                 last_slice = min(int(ceil((end * 1000) / usecs)), len(slices)) # Finds Last Slice
-                page_data['cpuTimesDoc'][name] = sum(slices[:doc-1]) / 1000.0 # Calc Document Time
+                page_data['cpuTimesDoc'][name] = sum(slices[:doc]) / 1000.0 # Calc Document Time
                 page_data['cpuTimes'][name] = (sum(slices[doc:last_slice]) / 1000.0) + page_data['cpuTimesDoc'][name] # Calc Total Cpu time
 
                 busy_doc += page_data['cpuTimesDoc'][name] # Add Total for Total Doc Cpu Time
@@ -1554,7 +1560,7 @@ class DevToolsParser(object):
 
     def process_v8_stats(self):
         """Add the v8 stats to the page data"""
-        logs.write("\tProcess_v8_stats")
+        logs.write("    Process_v8_stats")
         try:
             page_data = self.result['pageData']
             if self.v8_stats is not None and os.path.isfile(self.v8_stats):

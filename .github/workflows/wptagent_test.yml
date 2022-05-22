@@ -43,18 +43,39 @@ jobs:
     - name: Install/Cache pip dependencies
       run: pip install -r .github/workflows/requirements.txt
 
-    - name: Analysing the code with pylint
-      run: |
-       find -name "*.py" -not -path "./ws4py/*" -exec pylint {} --errors-only \;
+    # - name: Analysing the code with pylint
+    #   run: |
+    #    find -name "*.py" -not -path "./ws4py/*" -exec pylint {} --errors-only \;
     
 
-    - name: Test with pytest
-      run: |
-        pytest -vv
+    # - name: Test with pytest
+    #   run: |
+    #     pytest -vv
         
-    # - name: Run a local test # We could add Local Tests here
-    #   run: |
-    #     python3 wptagent.py --xvfb --location test --browser "Chrome" -vvvv --testurl light --debug
-    # - name: Print Profil # Call a python function to print the profile data or log data after run
-    #   run: |
-    #     python3 test_wptagent.py
+    # Light
+    - name: (LIGHT) Local Test # We could add Local Tests here
+      run: |
+        python3 wptagent.py --debug -vvvv --testurl light
+    #   python3 wptagent.py --xvfb --location test --browser "Chrome" -vvvv --testurl light --debug
+    
+    - name: (LIGHT) Printing Logs
+      run: |
+        python3 wptagent_test.py -l
+
+    - name: (LIGHT) Old vs New, Checking For Differences of PageData / Printing New & Old Log Time # Call a python function to print the profile data or log data after run
+      run: |
+        python3 wptagent_test.py -d -c -p
+
+    # HEAVY
+    - name: (HEAVY) Local Test
+      run: |
+        python3 wptagent.py --debug -vvvv --testurl heavy
+
+    - name: (HEAVY) Printing Logs
+      run: |
+        python3 wptagent_test.py -l
+
+    - name: (HEAVY) Old vs New, Checking For Differences of PageData / Printing New & Old Log Time
+      run: |
+        python3 wptagent_test.py -d -c -p
+    

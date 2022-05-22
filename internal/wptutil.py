@@ -123,7 +123,15 @@ class LogSingleton:
 
         if self.grabFunctionName:
             self.inspect = __import__("inspect")
+    @staticmethod
+    def set_time_now():
+        if LogSingleton.__instance == None:
+            return
+        self = LogSingleton.__instance
 
+        self.starttime = time.time()  # Start time
+        self.lastcalltime = time.time()  # For logging last call time
+        
     @staticmethod
     def get():
         """ Static access method. """
@@ -163,7 +171,7 @@ class LogSingleton:
         _timeFromStart = str(int((time.time() - self.starttime)*1000))
 
         self.f_out_log.write(
-            f"{_timestamp} | {_timeFromStart.ljust(5)} | {elapsed.ljust(5)} | {_out.ljust(65)} | {_fileName}|{_cn}|{str(_lineNumber)}>\n")
+            f"{_timestamp} | {_timeFromStart.ljust(5)} | {elapsed.ljust(5)} | {_out.ljust(28)} | {_fileName}|{_cn}|{str(_lineNumber)}>\n")
 
         if self.logTime:  # Finish Time of Logger
             self.logTotalTime += time.time() - logTime
