@@ -510,7 +510,7 @@ class WebPageTest(object):
     def process_job_json(self, test_json):
         """Process the JSON of a test into a job file"""
         logs.write("Processing_Job_Json")
-        if self.cpu_scale_multiplier is None:
+        if self.cpu_scale_multiplier is None and self.options.debug != True:
             self.benchmark_cpu()
         job = test_json
         self.raw_job = dict(test_json)
@@ -784,6 +784,7 @@ class WebPageTest(object):
         """Create a task object for the next test run or return None if the job is done"""
         if self.is_dead:
             return None
+        logs.write("Getting Task")
         # Do the one-time setup at the beginning of a job
         if 'current_state' not in job:
             if not self.needs_zip:
@@ -791,6 +792,7 @@ class WebPageTest(object):
             if 'work_server' in job and 'jobID' in job:
                 self.notify_test_started(job)
             self.install_extensions()
+        logs.write("Report_diagnostic")
         self.report_diagnostics()
         task = None
         if self.log_handler is not None:
@@ -1744,7 +1746,7 @@ class WebPageTest(object):
 
     def report_diagnostics(self):
         """Send a periodic diagnostics report"""
-        if self.is_dead:
+        if self.is_dead or self.options.debug == True:
             return
         # Don't report more often than once per minute
         now = monotonic()

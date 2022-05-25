@@ -455,6 +455,7 @@ class DevTools(object):
         """Stop capturing dev tools, timeline and trace data"""
         if self.must_exit:
             return
+        logs.write("Stopping recording")
         self.profile_start('stop_recording')
         if self.task['log_data']:
             if 'coverage' in self.job and self.job['coverage']:
@@ -600,7 +601,7 @@ class DevTools(object):
 
     def start_collecting_trace(self):
         """Kick off the trace processing asynchronously"""
-        logs.write("Collecting Trace")
+        logs.write("Start Collecting Trace")
         if self.trace_enabled and not self.must_exit:
             keep_timeline = True
             if 'discard_timeline' in self.job and self.job['discard_timeline']:
@@ -659,7 +660,7 @@ class DevTools(object):
                                 logging.exception('Error processing devtools message')
                         except Exception:
                             no_message_count += 1
-                            time.sleep(1)
+                            time.sleep(0.5)
                 self.websocket.stop_processing_trace(self.job)
             except Exception:
                 logging.exception('Error processing trace events')

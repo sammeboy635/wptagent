@@ -245,7 +245,7 @@ class DevtoolsBrowser(object):
 
     def on_stop_recording(self, task):
         """Stop recording"""
-        logs.write("Stoping Recording")
+        logs.write("On Stopping Recording")
         if self.devtools is not None and not self.must_exit_now:
             self.devtools.collect_trace()
             if self.devtools_screenshot:
@@ -416,7 +416,6 @@ class DevtoolsBrowser(object):
             if 'page_data' in parser.result and 'result' in parser.result['page_data']:
                 self.task['page_result'] = parser.result['page_data']['result']
         self.profile_end('dtbrowser.process_devtools_requests')
-        logs.write("***End of Processing Devtools Requests***")
 
     def run_js_file(self, file_name):
         """Execute one of our js scripts"""
@@ -563,6 +562,7 @@ class DevtoolsBrowser(object):
 
     def collect_browser_metrics(self, task):
         """Collect all of the in-page browser metrics that we need"""
+        logs.write("Collect_Browser_Metrics")
         if self.must_exit_now:
             return
         user_timing = self.run_js_file('user_timing.js')

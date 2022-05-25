@@ -239,6 +239,7 @@ class WPTAgent(object):
                 self.job['capture_display'] = self.capture_display
                 self.job['shaper'] = self.shaper
                 self.task = self.wpt.get_task(self.job)
+                logs.write("Getting Task End")
                 while self.task is not None:
                     start = monotonic()
                     try:
@@ -435,7 +436,6 @@ class WPTAgent(object):
     def startup(self, detected_browsers):
         """Validate that all of the external dependencies are installed"""
         ret = True
-
         # default /tmp/wptagent as an alive file on Linux
         if self.options.alive is None:
             if platform.system() == "Linux":
@@ -464,7 +464,6 @@ class WPTAgent(object):
 
         # Optional imports
         self.requires('fontTools', 'fonttools')
-
         # Try patching ws4py with a faster lib
         try:
             self.requires('wsaccel')
@@ -509,14 +508,14 @@ class WPTAgent(object):
         if platform.system() == "Linux" and not self.options.android and \
                 not self.options.iOS and 'DISPLAY' not in os.environ:
             self.options.xvfb = True
-
+        logs.write("before XVFB")
         if self.options.xvfb:
             ret = self.requires('xvfbwrapper') and ret
             if ret:
                 from xvfbwrapper import Xvfb
                 self.xvfb = Xvfb(width=1920, height=1200, colordepth=24)
                 self.xvfb.start()
-
+        logs.write("after XVFB")
         # Figure out which display to capture from
         if not self.options.android and not self.options.iOS:
             if platform.system() == "Linux" and 'DISPLAY' in os.environ:
@@ -580,7 +579,6 @@ class WPTAgent(object):
         # Update the Windows root certs
         if platform.system() == "Windows":
             self.update_windows_certificates()
-
         return ret
 
     def get_node_version(self):
