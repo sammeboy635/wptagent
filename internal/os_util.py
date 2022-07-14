@@ -101,7 +101,6 @@ def wait_for_elevated_process(process_info):
         ret = win32process.GetExitCodeProcess(process_info['hProcess'])
         win32api.CloseHandle(process_info['hProcess'])
     return ret
-# pylint: enable=E0611,E0401
 
 # pylint: disable=E1101
 def get_free_disk_space():
@@ -129,7 +128,7 @@ def get_file_version(filename):
     except:
         logging.exception('Error getting file version for %s', filename)
     return version
-
+# pylint: enable=E0611,E0401
 def pc_name():
     """ Grabs the hostname and Local IP address of the machine and returns hostname-IP """
     try:
