@@ -74,6 +74,9 @@ ENABLE_BLINK_FEATURES = [
     'LayoutInstabilityAPI'
 ]
 
+DISABLE_EDGECHROME_FEATURES =  DISABLE_CHROME_FEATURES + [
+    'kAutofillEdgeCoupons'
+]
 class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
     """Desktop Chrome"""
     def __init__(self, path, options, job):
@@ -103,7 +106,7 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
         self.install_policy()
         args = list(CHROME_COMMAND_LINE_OPTIONS)
         features = list(ENABLE_CHROME_FEATURES)
-        disable_features = list(DISABLE_CHROME_FEATURES)
+        disable_features = list(DISABLE_EDGECHROME_FEATURES) if 'edge' in self.job['browser'].lower() else list(DISABLE_CHROME_FEATURES)
         host_rules = list(HOST_RULES)
         if 'host_rules' in task:
             host_rules.extend(task['host_rules'])
