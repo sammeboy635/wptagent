@@ -104,24 +104,32 @@ const Wappalyzer = {
       ) {
         let version = ''
         let confidence = 0
+        let rootPath
 
         detections
-          .filter(({ technology }) => technology)
+          .filter(
+            ({ technology: _technology }) =>
+              _technology && _technology.name === technology.name
+          )
           .forEach(
-            ({ technology: { name }, pattern, version: _version = '' }) => {
-              if (name === technology.name) {
-                confidence = Math.min(100, confidence + pattern.confidence)
-                version =
-                  _version.length > version.length &&
-                  _version.length <= 15 &&
-                  (parseInt(_version, 10) || 0) < 10000 // Ignore long numeric strings like timestamps
-                    ? _version
-                    : version
-              }
+            ({
+              technology: { name },
+              pattern,
+              version: _version = '',
+              rootPath: _rootPath,
+            }) => {
+              confidence = Math.min(100, confidence + pattern.confidence)
+              version =
+                _version.length > version.length &&
+                _version.length <= 15 &&
+                (parseInt(_version, 10) || 0) < 10000 // Ignore long numeric strings like timestamps
+                  ? _version
+                  : version
+              rootPath = rootPath || _rootPath || undefined
             }
           )
 
-        resolved.push({ technology, confidence, version, lastUrl })
+        resolved.push({ technology, confidence, version, rootPath, lastUrl })
       }
 
       return resolved
@@ -140,12 +148,23 @@ const Wappalyzer = {
       .sort((a, b) => (priority(a) > priority(b) ? 1 : -1))
       .map(
         ({
-          technology: { name, slug, categories, icon, website, pricing, cpe },
+          technology: {
+            name,
+            description,
+            slug,
+            categories,
+            icon,
+            website,
+            pricing,
+            cpe,
+          },
           confidence,
           version,
+          rootPath,
           lastUrl,
         }) => ({
           name,
+          description,
           slug,
           categories: categories.map((id) => Wappalyzer.getCategory(id)),
           confidence,
@@ -154,6 +173,7 @@ const Wappalyzer = {
           website,
           pricing,
           cpe,
+          rootPath,
           lastUrl,
         })
       )
@@ -172,6 +192,10 @@ const Wappalyzer = {
 
       if (matches) {
         matches.forEach((match, index) => {
+          if (String(match).length > 10) {
+            return
+          }
+
           // Parse ternary operator
           const ternary = new RegExp(`\\\\${index}\\?([^:]+):(.*)$`).exec(
             version
@@ -234,28 +258,30 @@ const Wappalyzer = {
       done = true
 
       resolved.forEach(({ technology, confidence, lastUrl }) => {
-        technology.implies.forEach(({ name, confidence: _confidence }) => {
-          const implied = Wappalyzer.getTechnology(name)
+        technology.implies.forEach(
+          ({ name, confidence: _confidence, version }) => {
+            const implied = Wappalyzer.getTechnology(name)
 
-          if (!implied) {
-            throw new Error(`Implied technology does not exist: ${name}`)
+            if (!implied) {
+              throw new Error(`Implied technology does not exist: ${name}`)
+            }
+
+            if (
+              resolved.findIndex(
+                ({ technology: { name } }) => name === implied.name
+              ) === -1
+            ) {
+              resolved.push({
+                technology: implied,
+                confidence: Math.min(confidence, _confidence),
+                version: version || '',
+                lastUrl,
+              })
+
+              done = false
+            }
           }
-
-          if (
-            resolved.findIndex(
-              ({ technology: { name } }) => name === implied.name
-            ) === -1
-          ) {
-            resolved.push({
-              technology: implied,
-              confidence: Math.min(confidence, _confidence),
-              version: '',
-              lastUrl,
-            })
-
-            done = false
-          }
-        })
+        )
       })
     } while (resolved.length && !done)
   },
@@ -279,7 +305,6 @@ const Wappalyzer = {
       scripts: oo,
       css: oo,
       robots: oo,
-      magento: oo,
       certIssuer: oo,
       scriptSrc: om,
       cookies: mm,
@@ -319,6 +344,7 @@ const Wappalyzer = {
     Wappalyzer.technologies = Object.keys(data).reduce((technologies, name) => {
       const {
         cats,
+        description,
         url,
         xhr,
         dom,
@@ -327,7 +353,6 @@ const Wappalyzer = {
         scripts,
         css,
         robots,
-        magento,
         meta,
         headers,
         dns,
@@ -347,6 +372,7 @@ const Wappalyzer = {
 
       technologies.push({
         name,
+        description: description || null,
         categories: cats || [],
         slug: Wappalyzer.slugify(name),
         url: transform(url),
@@ -373,13 +399,13 @@ const Wappalyzer = {
         css: transform(css),
         certIssuer: transform(certIssuer),
         robots: transform(robots),
-        magento: transform(magento),
         meta: transform(meta),
         scriptSrc: transform(scriptSrc),
         js: transform(js, true),
-        implies: transform(implies).map(({ value, confidence }) => ({
+        implies: transform(implies).map(({ value, confidence, version }) => ({
           name: value,
           confidence,
+          version,
         })),
         excludes: transform(excludes).map(({ value }) => ({
           name: value,
@@ -525,8 +551,10 @@ const Wappalyzer = {
                     // Escape slashes
                     .replace(/\//g, '\\/')
                     // Optimise quantifiers for long strings
+                    .replace(/\\\+/g, '__escapedPlus__')
                     .replace(/\+/g, '{1,250}')
                     .replace(/\*/g, '{0,250}')
+                    .replace(/__escapedPlus__/g, '\\+')
                 : '',
               'i'
             )

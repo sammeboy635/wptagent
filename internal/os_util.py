@@ -8,6 +8,10 @@ import logging
 import os
 import platform
 import subprocess
+import sys
+from shutil import rmtree
+import socket
+
 
 def kill_all(exe, force, timeout=30):
     """Terminate all instances of the given process"""
@@ -84,6 +88,14 @@ def run_elevated(command, args, wait=True):
             else:
                 ret = process_info
         else:
+            try:
+                import shlex
+                if platform.system() in ["Linux", "Darwin"]:
+                    params = shlex.split(args)
+                    params = [shlex.quote(arg) for arg in params]
+                    args = ' '.join(params)
+            except Exception:
+                logging.exception('Error sanitizing elevated shell string')
             logging.debug('sudo ' + command + ' ' + args)
             ret = subprocess.call('sudo ' + command + ' ' + args, shell=True)
     except Exception:
@@ -128,3 +140,45 @@ def get_file_version(filename):
     except:
         logging.exception('Error getting file version for %s', filename)
     return version
+
+def remove_file(_file):
+    """ Function to handle removing a single file"""
+    try:
+        if (sys.version_info >= (3, 8)):
+            logging.debug("Removing File %s", _file, stacklevel=3)
+        else:
+            logging.debug("Removing File %s", _file)
+    except Exception:
+        pass
+    try:
+        if os.path.isfile(_file):
+            os.remove(_file)
+    except Exception:
+        pass
+
+def remove_dir_tree(_dir):
+    """ Function to remove a entire directory and the files within"""
+    try:
+        if (sys.version_info >= (3, 8)):
+            logging.debug("Removing Folder %s", _dir, stacklevel=3)
+        else:
+            logging.debug("Removing File %s", _file)
+    except Exception:
+        pass
+    try:
+        if os.path.isdir(_dir):
+            rmtree(_dir)
+    except Exception:
+        pass 
+        
+def pc_name():
+    """ Grabs the hostname and Local IP address of the machine and returns hostname-IP """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return socket.gethostname() + "-" + s.getsockname()[0]
+    except Exception as e:
+        logging.error("Error getting pc_name: ", e)
+        
+    return platform.uname()[1]
+

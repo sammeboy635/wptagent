@@ -6,6 +6,7 @@ Copyright 2022 Catchpoint Systems Inc.
 Use of this source code is governed by the Polyform Shield 1.0.0 license that can be
 found in the LICENSE.md file.
 """
+import base64
 import gzip
 import logging
 import os
@@ -37,6 +38,12 @@ class Netlog():
             "VeryLow": "Lowest"
         }
         self.constants = None
+        # Callbacks for streaming request state as events are processed
+        self.on_request_created = None              # (request_id, request_info)
+        self.on_request_headers_sent = None         # (request_id, request_headers)
+        self.on_response_headers_received = None    # (request_id, response_headers)
+        self.on_response_bytes_received = None      # (request_id, filtered_bytes)
+        self.on_request_id_changed = None           # (request_id, new_request_id)
 
     def set_constants(self, constants):
         """Setup the event look-up tables"""
@@ -140,6 +147,7 @@ class Netlog():
         if 'url_request' in self.netlog:
             for request_id in self.netlog['url_request']:
                 request = self.netlog['url_request'][request_id]
+                request['netlog_id'] = request_id
                 request['fromNet'] = bool('start' in request)
                 if 'start' in request and request['start'] > last_time:
                     last_time = request['start']
@@ -170,13 +178,13 @@ class Netlog():
                                 key = header[:index].strip(u': ').lower()
                                 value = header[index + 1:].strip(u': ')
                                 if key == u'scheme':
-                                    scheme = unicode(value)
+                                    scheme = str(value)
                                 elif key == u'host':
-                                    origin = unicode(value)
+                                    origin = str(value)
                                 elif key == u'authority':
-                                    origin = unicode(value)
+                                    origin = str(value)
                                 elif key == u'path':
-                                    path = unicode(value)
+                                    path = str(value)
                         except Exception:
                             logging.exception("Error generating url from request headers")
                     if scheme and origin and path:
@@ -291,7 +299,7 @@ class Netlog():
                 requests.sort(key=lambda x: x['start'] if 'start' in x else x['created'])
                 # Assign the socket connect time to the first request on each socket
                 if 'socket' in self.netlog:
-                    for request in requests:
+                    for request in requests or []:
                         if 'socket' in request and request['socket'] in self.netlog['socket']:
                             socket = self.netlog['socket'][request['socket']]
                             if 'address' in socket:
@@ -349,7 +357,7 @@ class Netlog():
                                 'elapsed': dns['elapsed'],
                             })
                     # Go through the requests and assign the DNS lookups as needed
-                    for request in requests:
+                    for request in requests or []:
                         if 'connect_start' in request:
                             hostname = urlparse(request['url']).hostname
                             if hostname in dns_lookups and 'claimed' not in dns_lookups[hostname]:
@@ -367,7 +375,7 @@ class Netlog():
                                                 request['dns_start'] = dns['start']
                                                 request['dns_end'] = dns['end']
                     # Make another pass for any DNS lookups that didn't establish a connection (HTTP/2 coalescing)
-                    for request in requests:
+                    for request in requests or []:
                         hostname = urlparse(request['url']).hostname
                         if hostname in dns_lookups and 'claimed' not in dns_lookups[hostname]:
                             dns = dns_lookups[hostname]
@@ -389,14 +397,14 @@ class Netlog():
                          'connect_start', 'connect_end',
                          'ssl_start', 'ssl_end',
                          'start', 'created', 'first_byte', 'end']
-                for request in requests:
+                for request in requests or []:
                     for time_name in times:
                         if time_name in request and self.marked_start_time is None:
                             if self.start_time is None or request[time_name] < self.start_time:
                                 self.start_time = request[time_name]
                 # Go through and adjust all of the times to be relative in ms
                 if self.start_time is not None:
-                    for request in requests:
+                    for request in requests or []:
                         for time_name in times:
                             if time_name in request:
                                 request[time_name] = \
@@ -410,6 +418,12 @@ class Netlog():
                     requests = []
         if not len(requests):
             requests = None
+        # Add the netlog request ID as a nanosecond addition to the start time
+        # so that sorting by start time for requests that start within the same
+        # millisecond is still correct.
+        for request in requests or []:
+            if 'start' in request and 'netlog_id' in request:
+                request['start'] = float(request['start']) + (float(request['netlog_id'] % 10000) / 1000000.0)
         self.netlog_requests = requests
         return requests
 
@@ -578,12 +592,16 @@ class Netlog():
                     stream['start'] = event['time']
                 if 'headers' in params:
                     stream['request_headers'] = params['headers']
+                    if 'url_request' in stream and self.on_request_headers_sent is not None:
+                        self.on_request_headers_sent(str(stream['url_request']), params['headers'])
             if name == 'HTTP2_SESSION_RECV_HEADERS':
                 if 'first_byte' not in stream:
                     stream['first_byte'] = event['time']
                 stream['end'] = event['time']
                 if 'headers' in params:
                     stream['response_headers'] = params['headers']
+                    if 'url_request' in stream and self.on_response_headers_received is not None:
+                        self.on_response_headers_received(str(stream['url_request']), params['headers'])
             if name == 'HTTP2_STREAM_ADOPTED_PUSH_STREAM' and 'url' in params and 'url_request' in self.netlog:
                 # Clone the fake urlrequest entry to the real one and delete the fake entry
                 old_request = stream['url_request'] if 'url_request' in stream else None
@@ -713,7 +731,7 @@ class Netlog():
             parent_id = params['source_dependency']['id']
             if 'connect_job' in self.netlog and parent_id in self.netlog['connect_job']:
                 self.netlog['connect_job'][parent_id]['dns'] = request_id
-        if name == 'HOST_RESOLVER_IMPL_REQUEST' and 'ph' in event:
+        if name == 'HOST_RESOLVER_IMPL_REQUEST' and 'phase' in event:
             if event['phase'] == 'PHASE_BEGIN':
                 if 'start' not in entry or event['time'] < entry['start']:
                     entry['start'] = event['time']
@@ -722,7 +740,11 @@ class Netlog():
                     entry['end'] = event['time']
         if 'start' not in entry and name == 'HOST_RESOLVER_IMPL_ATTEMPT_STARTED':
             entry['start'] = event['time']
+        if 'start' not in entry and name == 'HOST_RESOLVER_MANAGER_ATTEMPT_STARTED':
+            entry['start'] = event['time']
         if name == 'HOST_RESOLVER_IMPL_ATTEMPT_FINISHED':
+            entry['end'] = event['time']
+        if name == 'HOST_RESOLVER_MANAGER_ATTEMPT_FINISHED':
             entry['end'] = event['time']
         if name == 'HOST_RESOLVER_IMPL_CACHE_HIT':
             if 'end' not in entry or event['time'] > entry['end']:
@@ -828,12 +850,18 @@ class Netlog():
             entry['url'] = params['url'].split('#', 1)[0]
         if 'start' not in entry and name == 'HTTP_TRANSACTION_SEND_REQUEST':
             entry['start'] = event['time']
+            if self.on_request_created is not None:
+                self.on_request_created(str(request_id), entry)
         if 'headers' in params and name == 'HTTP_TRANSACTION_SEND_REQUEST_HEADERS':
             entry['request_headers'] = params['headers']
             if 'line' in params:
                 entry['line'] = params['line']
             if 'start' not in entry:
                 entry['start'] = event['time']
+                if self.on_request_created is not None:
+                    self.on_request_created(str(request_id), entry)
+            if self.on_request_headers_sent is not None:
+                self.on_request_headers_sent(str(request_id), entry['request_headers'])
         if 'headers' in params and name == 'HTTP_TRANSACTION_HTTP2_SEND_REQUEST_HEADERS':
             if isinstance(params['headers'], dict):
                 entry['request_headers'] = []
@@ -846,6 +874,10 @@ class Netlog():
                 entry['line'] = params['line']
             if 'start' not in entry:
                 entry['start'] = event['time']
+                if self.on_request_created is not None:
+                    self.on_request_created(str(request_id), entry)
+            if self.on_request_headers_sent is not None:
+                self.on_request_headers_sent(str(request_id), entry['request_headers'])
         if 'headers' in params and name == 'HTTP_TRANSACTION_QUIC_SEND_REQUEST_HEADERS':
             if isinstance(params['headers'], dict):
                 entry['request_headers'] = []
@@ -858,11 +890,17 @@ class Netlog():
             entry['protocol'] = 'QUIC'
             if 'start' not in entry:
                 entry['start'] = event['time']
+                if self.on_request_created is not None:
+                    self.on_request_created(str(request_id), entry)
+            if self.on_request_headers_sent is not None:
+                self.on_request_headers_sent(str(request_id), entry['request_headers'])
         if 'headers' in params and name == 'HTTP_TRANSACTION_READ_RESPONSE_HEADERS':
             entry['response_headers'] = params['headers']
             if 'first_byte' not in entry:
                 entry['first_byte'] = event['time']
             entry['end'] = event['time']
+            if self.on_response_headers_received is not None:
+                self.on_response_headers_received(str(request_id), entry['response_headers'])
         if 'headers' in params and name == 'HTTP_TRANSACTION_READ_EARLY_HINTS_RESPONSE_HEADERS':
             entry['early_hint_headers'] = params['headers']
             entry['end'] = event['time']
@@ -879,6 +917,14 @@ class Netlog():
             if 'has_raw_bytes' not in entry or not entry['has_raw_bytes']:
                 entry['bytes_in'] += params['byte_count']
                 entry['chunks'].append({'ts': event['time'], 'bytes': params['byte_count']})
+            elif entry['chunks']:
+                entry['chunks'][-1]['inflated'] = params['byte_count']
+            if 'bytes' in params and self.on_response_bytes_received is not None:
+                try:
+                    raw_bytes = base64.b64decode(params['bytes'])
+                    self.on_response_bytes_received(str(request_id), raw_bytes)
+                except Exception:
+                    logging.exception('Error decoding netlog response bytes')
         if 'stream_id' in params:
             entry['stream_id'] = params['stream_id']
         if name == 'URL_REQUEST_REDIRECTED':
@@ -886,6 +932,22 @@ class Netlog():
             self.netlog['next_request_id'] += 1
             self.netlog['url_request'][new_id] = entry
             del self.netlog['url_request'][request_id]
+            if self.on_request_id_changed is not None:
+                self.on_request_id_changed(str(request_id), str(new_id))
+            # Remap any pointers to the urlrequest to point to the new ID
+            if 'stream_job' in self.netlog:
+                for job_id in self.netlog['stream_job']:
+                    job = self.netlog['stream_job'][job_id]
+                    if 'url_request' in job and job['url_request'] == request_id:
+                        job['url_request'] = new_id
+            if 'h2_session' in self.netlog:
+                for session_id in self.netlog['h2_session']:
+                    session = self.netlog['h2_session'][session_id]
+                    if 'stream' in session:
+                        for stream_id in session['stream']:
+                            stream = session['stream'][stream_id]
+                            if 'url_request' in stream and stream['url_request'] == request_id:
+                                stream['url_request'] = new_id
     
     def process_disk_cache_event(self, event):
         """Disk cache events"""

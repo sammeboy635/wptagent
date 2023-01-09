@@ -21,58 +21,57 @@ except BaseException:
     import json
 
 CHROME_COMMAND_LINE_OPTIONS = [
-    '--disable-background-networking',
-    '--no-default-browser-check',
-    '--no-first-run',
-    '--new-window',
     '--allow-running-insecure-content',
+    '--disable-background-networking',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-breakpad',
     '--disable-client-side-phishing-detection',
     '--disable-component-update',
     '--disable-default-apps',
-    '--disable-device-discovery-notifications',
     '--disable-domain-reliability',
-    '--disable-background-timer-throttling',
-    '--net-log-capture-mode=IncludeSensitive',
-    '--load-media-router-component-extension=0',
-    '--mute-audio',
-    '--disable-hang-monitor',
-    '--password-store=basic',
-    '--disable-breakpad',
-    '--dont-require-litepage-redirect-infobar',
-    '--override-https-image-compression-infobar',
     '--disable-fetching-hints-at-navigation-start',
-    '--disable-back-forward-cache',
-    '--disable-site-isolation-trials'
+    '--disable-hang-monitor',
+    '--disable-ipc-flooding-protection',
+    '--disable-prompt-on-repost',
+    '--disable-renderer-backgrounding',
+    '--disable-site-isolation-trials',
+    '--disable-sync',
+    '--metrics-recording-only',
+    '--mute-audio',
+    '--new-window',
+    '--no-default-browser-check',
+    '--no-first-run',
+    '--password-store=basic',
+    '--use-mock-keychain',
 ]
 
 HOST_RULES = [
     '"MAP cache.pack.google.com 127.0.0.1"',
     '"MAP clients1.google.com 127.0.0.1"',
-    '"MAP update.googleapis.com 127.0.0.1"',
-    '"MAP redirector.gvt1.com 127.0.0.1"',
+    '"MAP edge.microsoft.com 127.0.0.1"',
     '"MAP laptop-updates.brave.com 127.0.0.1"',
     '"MAP offlinepages-pa.googleapis.com 127.0.0.1"',
-    '"MAP edge.microsoft.com 127.0.0.1"',
-    '"MAP optimizationguide-pa.googleapis.com 127.0.0.1"'
+    '"MAP optimizationguide-pa.googleapis.com 127.0.0.1"',
+    '"MAP redirector.gvt1.com 127.0.0.1"',
+    '"MAP update.googleapis.com 127.0.0.1"',
 ]
 
 ENABLE_CHROME_FEATURES = [
-    'NetworkService',
-    'NetworkServiceInProcess',
-    'SecMetadata'
 ]
 
 DISABLE_CHROME_FEATURES = [
-    'InterestFeedContentSuggestions',
+    'AutofillServerCommunication',
     'CalculateNativeWinOcclusion',
-    'TranslateUI',
-    'Translate',
+    'HeavyAdPrivacyMitigations',
+    'InterestFeedContentSuggestions',
+    'MediaRouter',
     'OfflinePagesPrefetching',
-    'HeavyAdPrivacyMitigations'
+    'OptimizationHints',
+    'Translate',
 ]
 
 ENABLE_BLINK_FEATURES = [
-    'LayoutInstabilityAPI'
 ]
 
 class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
@@ -127,6 +126,10 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
                 job['streaming_netlog'] = True
             except Exception:
                 logging.exception('Error creating netlog fifo')
+        if using_fifo:
+            args.append('--net-log-capture-mode=Everything')
+        else:
+            args.append('--net-log-capture-mode=IncludeSensitive')
         if not using_fifo and 'netlog' in job and job['netlog']:
             netlog_file = os.path.join(task['dir'], task['prefix']) + '_netlog.txt'
             args.append('--log-net-log="{0}"'.format(netlog_file))
@@ -140,8 +143,10 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
         if platform.system() == "Linux":
             args.append('--disable-setuid-sandbox')
             args.append('--disable-dev-shm-usage')
-        args.append('--enable-features=' + ','.join(features))
-        args.append('--enable-blink-features=' + ','.join(ENABLE_BLINK_FEATURES))
+        if len(features):
+            args.append('--enable-features=' + ','.join(features))
+        if len(ENABLE_BLINK_FEATURES):
+            args.append('--enable-blink-features=' + ','.join(ENABLE_BLINK_FEATURES))
         if task['running_lighthouse']:
             args.append('--headless')
         
@@ -176,9 +181,10 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
             command_line = '"{0}"'.format(self.path)
         else:
             command_line = self.path
+        self.sanitize_shell_args(args)
         command_line += ' ' + ' '.join(args)
         if 'addCmdLine' in job:
-            command_line += ' ' + job['addCmdLine']
+            command_line += ' ' + self.sanitize_shell_string(job['addCmdLine'])
         command_line += ' ' + 'about:blank'
         # re-try launching and connecting a few times if necessary
         connected = False
@@ -274,6 +280,10 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
         if self.connected:
             DevtoolsBrowser.run_task(self, task)
 
+    def alert_size(self, _alert_config, _task_dir, _prefix):
+        '''Checks the agents file size and alert on certain percentage over avg byte size'''               
+        self.alert_desktop_results(_alert_config, 'Chrome', _task_dir, _prefix)
+
     def execute_js(self, script):
         """Run javascipt"""
         return DevtoolsBrowser.execute_js(self, script)
@@ -353,6 +363,15 @@ class ChromeDesktop(DesktopBrowser, DevtoolsBrowser):
                     netlog_file = os.path.join(task['dir'], task['prefix']) + '_netlog.txt.gz'
                     self.netlog_out = gzip.open(netlog_file, 'wt', compresslevel=7, encoding='utf-8')
                 self.netlog = Netlog()
+
+                # set up the callbacks (these will happen on a background thread)
+                if self.devtools is not None:
+                    self.netlog.on_request_created = self.devtools.on_netlog_request_created                     # (request_id, request_info)
+                    self.netlog.on_request_headers_sent = self.devtools.on_netlog_request_headers_sent           # (request_id, request_headers)
+                    self.netlog.on_response_headers_received = self.devtools.on_netlog_response_headers_received # (request_id, response_headers)
+                    self.netlog.on_response_bytes_received = self.devtools.on_netlog_response_bytes_received     # (request_id, filtered_bytes)
+                    self.netlog.on_request_id_changed = self.devtools.on_request_id_changed                      # (request_id, new_request_id)
+
                 if self.netlog_header:
                     for line in self.netlog_header:
                         if self.netlog_out:

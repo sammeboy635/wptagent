@@ -52,6 +52,7 @@ class DevtoolsBrowser(object):
         self.script_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'js')
         self.webkit_context = None
         self.total_sleep = 0
+        self.document_domain = None
 
     def shutdown(self):
         """Agent is dying NOW"""
@@ -491,7 +492,7 @@ class DevtoolsBrowser(object):
         except Exception:
             logging.exception('Error getting json request data')
         if requests_json is None:
-            requests_json = 'null'
+            requests_json = '[]'
         return requests_json
 
     def find_dom_node_info(self, dom_tree, node_id):
@@ -636,7 +637,10 @@ class DevtoolsBrowser(object):
             with gzip.open(path, GZIP_TEXT, 7) as outfile:
                 outfile.write(json.dumps(user_timing))
         page_data = self.run_js_file('page_data.js')
+        self.document_domain = None
         if page_data is not None:
+            if 'document_hostname' in page_data:
+                self.document_domain = page_data['document_hostname']
             task['page_data'].update(page_data)
 
     def process_command(self, command):
@@ -685,9 +689,16 @@ class DevtoolsBrowser(object):
                 needs_mark = True
                 if self.task['combine_steps']:
                     needs_mark = False
-                script = self.prepare_script_for_record(script, needs_mark) #pylint: disable=no-member
+                if self.devtools.execution_context is not None:
+                    # Clear the orange frame as a separate step to make sure it is done in the correct context
+                    clear_script = self.prepare_script_for_record('', needs_mark)
+                    self.devtools.execute_js(clear_script)
+                else:
+                    script = self.prepare_script_for_record(script, needs_mark) #pylint: disable=no-member
                 self.devtools.start_navigating()
-            self.devtools.execute_js(script)
+            self.devtools.execute_js(script, True)
+        elif command['command'] == 'setexecutioncontext':
+            self.devtools.set_execution_context(command['target'])
         elif command['command'] == 'sleep':
             available_sleep = 60 - self.total_sleep
             delay = min(available_sleep, max(0, int(re.search(r'\d+', str(command['target'])).group())))
@@ -1058,7 +1069,42 @@ class DevtoolsBrowser(object):
                         if name not in cookies:
                             cookies[name] = []
                         cookies[name].append(cookie['value'])
-                detect_script = self.wappalyzer_script(request_headers, cookies)
+                # Get the relavent DNS records for the origin
+                dns = {}
+                dns_types = ['cname', 'ns', 'mx', 'txt', 'soa', 'https', 'svcb']
+                if self.document_domain is not None:
+                    dns_domain = str(self.document_domain)
+                    while dns_domain.find('.') > 0:
+                        logging.debug('Wappalyzer resolving %s', dns_domain)
+                        try:
+                            from dns import resolver
+                            dns_resolver = resolver.Resolver()
+                            dns_resolver.timeout = 1
+                            dns_resolver.lifetime = 1
+                            for dns_type in dns_types:
+                                if dns_type not in dns:
+                                    try:
+                                        result = []
+                                        answer = dns_resolver.query(dns_domain, dns_type.upper(), raise_on_no_answer=False)
+                                        for a in answer:
+                                            result.append(str(a))
+                                        if len(result):
+                                            dns[dns_type] = result
+                                            logging.debug('Wappalyzer DNS %s for %s: %s', dns_type, dns_domain, json.dumps(result))
+                                    except Exception:
+                                        logging.exception('Error doing wappalyzer DNS %s lookup for %s', dns_type, self.document_domain)
+                        except Exception:
+                            logging.exception('Error doing wappalyzer DNS lookup')
+                        # Walk up a step in case we need to look up a parent-domain record
+                        pos = dns_domain.find('.')
+                        dns_domain = dns_domain[pos + 1:]
+                task['page_data']['origin_dns'] = dns
+                for dns_type in dns_types:
+                    if dns_type not in dns:
+                        dns[dns_type] = []
+                logging.debug('Wappalyzer DNS for %s: %s', self.document_domain, json.dumps(dns))
+                # Generate the wappalyzer script
+                detect_script = self.wappalyzer_script(request_headers, cookies, dns)
                 response = self.devtools.send_command("Runtime.evaluate",
                                                       {'expression': detect_script,
                                                        'awaitPromise': True,
@@ -1087,7 +1133,7 @@ class DevtoolsBrowser(object):
             task['page_data']['wappalyzer_failed'] = 1
         self.profile_end('dtbrowser.wappalyzer_detect')
 
-    def wappalyzer_script(self, response_headers, cookies):
+    def wappalyzer_script(self, response_headers, cookies, dns):
         """Build the wappalyzer script to run in-browser"""
         script = None
         try:
@@ -1132,6 +1178,7 @@ class DevtoolsBrowser(object):
                                         headers[key].append(value)
                         script = script.replace('%WAPPALYZER%', wappalyzer)
                         script = script.replace('%COOKIES%', json.dumps(cookies))
+                        script = script.replace('%DNS%', json.dumps(dns))
                         script = script.replace('%RESPONSE_HEADERS%', json.dumps(headers))
                         script = script.replace('%CATEGORIES%', json.dumps(categories))
                         script = script.replace('%TECHNOLOGIES%', json.dumps(technologies))
